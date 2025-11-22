@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Cafe - Kasir</title>
+  <style>
+    :root{--accent:#ff6f61;--bg:#f7f7f9;--card:#fff;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;color:#111;background:var(--bg);}
+    .container{max-width:980px;margin:18px auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    h1{font-size:20px;margin:0}
+    .btn{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    .btn.secondary{background:#fff;color:var(--accent);border:2px solid var(--accent)}
+
+    /* Card */
+    .card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+
+    /* Form */
+    .form-row{display:flex;gap:8px;flex-wrap:wrap}
+    .field{flex:1;min-width:120px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input[type='number'],select,input[type='date']{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6ea}
+
+    /* Transactions table */
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #f1f1f4;font-size:14px}
+
+    /* Summary */
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    @media(min-width:720px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .summary{padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfbfd);text-align:center}
+    .summary h3{margin:6px 0 0;font-size:18px}
+    .summary p{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+    /* Slide-in panel for add menu */
+    .slide-panel{position:fixed;right:0;top:0;height:100vh;width:92%;max-width:380px;background:var(--card);box-shadow:-20px 0 30px rgba(0,0,0,0.08);transform:translateX(110%);transition:transform .35s ease;border-left:1px solid #eee;padding:18px;z-index:60}
+    .slide-panel.open{transform:translateX(0)}
+    .panel-handle{display:flex;align-items:center;justify-content:space-between}
+    .panel-close{background:transparent;border:0;font-size:20px;cursor:pointer}
+
+    /* Mobile friendly tweaks */
+    @media(max-width:600px){h1{font-size:18px}.form-row{gap:6px}.btn{padding:8px 12px}}
+
+    /* small helpers */
+    .muted{color:var(--muted);font-size:13px}
+    .right{text-align:right}
+    .small{font-size:13px}
+    .empty{padding:18px;text-align:center;color:var(--muted)}
+
+    /* footer */
+    footer{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Mini Cafe — Kasir</h1>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btnTambahMenu" class="btn">Tambah Menu</button>
+        <button id="btnClearAll" class="btn secondary">Reset Data</button>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="formTitle">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <strong id="formTitle">Input Transaksi</strong>
+        <span class="muted small">Menu urut abjad otomatis</span>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="selectMenu">Menu</label>
+          <select id="selectMenu"></select>
+        </div>
+        <div class="field" style="flex:0 0 110px;min-width:90px">
+          <label for="qty">Qty</label>
+          <input id="qty" type="number" min="1" value="1" />
+        </div>
+        <div class="field" style="flex:0 0 170px;min-width:120px">
+          <label for="dateInput">Tanggal</label>
+          <input id="dateInput" type="date" />
+        </div>
+        <div style="flex:0 0 110px">
+          <label>&nbsp;</label>
+          <button id="btnSave" class="btn" style="width:100%">Simpan</button>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px">
+        <div class="field">
+          <label>Hari</label>
+          <input id="hari" readonly />
+        </div>
+        <div class="field">
+          <label>Bulan</label>
+          <input id="bulan" readonly />
+        </div>
+        <div class="field">
+          <label>Tahun</label>
+          <input id="tahun" readonly />
+        </div>
+      </div>
+
+    </section>
+
+    <section class="grid" style="margin-bottom:10px">
+      <div class="card summary">
+        <div class="muted">Penjualan Hari Ini</div>
+        <h3 id="totalToday">Rp 0</h3>
+        <p id="countToday">0 transaksi</p>
+      </div>
+      <div class="card summary">
+        <div class="muted">Penjualan Bulan Ini</div>
+        <h3 id="totalMonth">Rp 0</h3>
+        <p id="countMonth">0 transaksi</p>
+      </div>
+      <div class="card summary">
+        <div class="muted">Total Menu</div>
+        <h3 id="menuCount">0</h3>
+        <p class="small">(urut abjad)</p>
+      </div>
+      <div class="card summary">
+        <div class="muted">Semua Transaksi</div>
+        <h3 id="totalAll">Rp 0</h3>
+        <p id="countAll">0 transaksi</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <strong>Rekapan Transaksi</strong>
+      <div id="txTableWrapper"></div>
+    </section>
+
+    <footer>
+      Siap di-upload ke GitHub — buka file <code>index.html</code> di browser. Data disimpan di <code>localStorage</code>.
+    </footer>
+  </div>
+
+  <!-- Slide-in panel for Tambah Menu -->
+  <aside id="slidePanel" class="slide-panel" aria-hidden="true">
+    <div class="panel-handle">
+      <strong>Tambah / Edit Menu</strong>
+      <button id="closePanel" class="panel-close">✕</button>
+    </div>
+    <p class="muted small">Form ini muncul sebagai panel slide agar tidak memenuhi form utama.</p>
+
+    <div style="margin-top:12px">
+      <label>Nama Menu</label>
+      <input id="menuName" placeholder="Contoh: Americano" />
+      <label style="margin-top:8px">Harga (angka)</label>
+      <input id="menuPrice" type="number" min="0" />
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="saveMenu" class="btn" style="flex:1">Simpan Menu</button>
+        <button id="cancelMenu" class="btn secondary" style="flex:1">Batal</button>
+      </div>
+    </div>
+
+    <hr style="margin:12px 0" />
+    <div>
+      <strong>Daftar Menu (urut abjad)</strong>
+      <div id="menuList" class="small muted" style="margin-top:8px;max-height:260px;overflow:auto"></div>
+    </div>
+  </aside>
+
+  <script>
+    // Simple mini-cafe JS using localStorage
+    const LS_MENUS = 'mini_cafe_menus_v1'
+    const LS_TX = 'mini_cafe_tx_v1'
+
+    // Elements
+    const selectMenu = document.getElementById('selectMenu')
+    const qtyEl = document.getElementById('qty')
+    const dateInput = document.getElementById('dateInput')
+    const btnSave = document.getElementById('btnSave')
+    const hariEl = document.getElementById('hari')
+    const bulanEl = document.getElementById('bulan')
+    const tahunEl = document.getElementById('tahun')
+    const totalTodayEl = document.getElementById('totalToday')
+    const totalMonthEl = document.getElementById('totalMonth')
+    const totalAllEl = document.getElementById('totalAll')
+    const countTodayEl = document.getElementById('countToday')
+    const countMonthEl = document.getElementById('countMonth')
+    const countAllEl = document.getElementById('countAll')
+    const menuCountEl = document.getElementById('menuCount')
+    const txTableWrapper = document.getElementById('txTableWrapper')
+    const btnTambahMenu = document.getElementById('btnTambahMenu')
+    const slidePanel = document.getElementById('slidePanel')
+    const closePanel = document.getElementById('closePanel')
+    const menuName = document.getElementById('menuName')
+    const menuPrice = document.getElementById('menuPrice')
+    const saveMenu = document.getElementById('saveMenu')
+    const cancelMenu = document.getElementById('cancelMenu')
+    const menuList = document.getElementById('menuList')
+    const btnClearAll = document.getElementById('btnClearAll')
+
+    // helper
+    const money = n => 'Rp ' + Number(n).toLocaleString('id-ID')
+
+    function nowISODate(){
+      const d = new Date();
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth()+1).padStart(2,'0')
+      const dd = String(d.getDate()).padStart(2,'0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+
+    // init date
+    dateInput.value = nowISODate()
+
+    function readStorage(key, fallback){
+      try{const raw = localStorage.getItem(key); return raw?JSON.parse(raw):fallback}catch(e){return fallback}
+    }
+    function writeStorage(key,val){localStorage.setItem(key,JSON.stringify(val))}
+
+    // load menus
+    function loadMenus(){
+      const menus = readStorage(LS_MENUS, [
+        {name:'Americano',price:15000},
+        {name:'Bakso',price:25000},
+        {name:'Cappuccino',price:22000},
+        {name:'Es Teh',price:5000},
+        {name:'Kopi Susu',price:14000}
+      ])
+      // sort alphabetically by name (case-insensitive)
+      menus.sort((a,b)=>a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+      writeStorage(LS_MENUS, menus)
+      return menus
+    }
+
+    function renderMenuOptions(){
+      const menus = loadMenus()
+      selectMenu.innerHTML = ''
+      menus.forEach((m,idx)=>{
+        const opt = document.createElement('option')
+        opt.value = idx
+        opt.textContent = `${m.name} — ${money(m.price)}`
+        selectMenu.appendChild(opt)
+      })
+      menuCountEl.textContent = menus.length
+      renderMenuList()
+    }
+
+    function renderMenuList(){
+      const menus = readStorage(LS_MENUS, [])
+      menuList.innerHTML = ''
+      if(!menus.length){menuList.textContent='(belum ada menu)';return}
+      const ul = document.createElement('ul')
+      ul.style.margin='0';ul.style.padding='0';ul.style.listStyle='none'
+      menus.forEach((m,idx)=>{
+        const li = document.createElement('li')
+        li.style.padding='6px 0';li.style.borderBottom='1px dashed #eee'
+        li.innerHTML = `<strong>${m.name}</strong> <span class='muted' style='float:right'>${money(m.price)}</span>`
+        ul.appendChild(li)
+      })
+      menuList.appendChild(ul)
+    }
+
+    // transactions
+    function loadTx(){return readStorage(LS_TX, [])}
+    function saveTx(tx){
+      const data = loadTx(); data.unshift(tx); writeStorage(LS_TX,data)
+    }
+
+    function updateDateParts(dateStr){
+      const d = new Date(dateStr)
+      const hari = d.toLocaleDateString('id-ID',{weekday:'long'})
+      const monthName = d.toLocaleDateString('id-ID',{month:'long'})
+      hariEl.value = hari
+      bulanEl.value = monthName
+      tahunEl.value = d.getFullYear()
+    }
+
+    function renderTxTable(){
+      const tx = loadTx()
+      if(!tx.length){txTableWrapper.innerHTML='<div class="empty">Belum ada transaksi.</div>';return}
+      let html = '<table><thead><tr><th>Tanggal</th><th>Menu</th><th>Qty</th><th>Harga</th><th>Total</th></tr></thead><tbody>'
+      tx.forEach(t=>{
+        html += `<tr><td>${t.tanggal} (${t.hari.slice(0,3)} ${t.bulan} ${t.tahun})</td><td>${t.menu}</td><td>${t.qty}</td><td>${money(t.price)}</td><td>${money(t.total)}</td></tr>`
+      })
+      html += '</tbody></table>'
+      txTableWrapper.innerHTML = html
+    }
+
+    function calcSummaries(){
+      const tx = loadTx()
+      const today = new Date(dateInput.value)
+      const todayKey = today.toISOString().slice(0,10)
+      const monthKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`
+      let totalToday=0,countToday=0,totalMonth=0,countMonth=0,totalAll=0
+      tx.forEach(t=>{
+        totalAll += t.total
+        const tDateKey = `${t.tahun}-${String(new Date(t.tanggal).getMonth()+1).padStart(2,'0')}-${String(new Date(t.tanggal).getDate()).padStart(2,'0')}`
+        const tMonthKey = `${t.tahun}-${String(new Date(t.tanggal).getMonth()+1).padStart(2,'0')}`
+        if(t.tanggal === todayKey){ totalToday += t.total; countToday++ }
+        if(tMonthKey === monthKey){ totalMonth += t.total; countMonth++ }
+      })
+      totalTodayEl.textContent = money(totalToday)
+      totalMonthEl.textContent = money(totalMonth)
+      totalAllEl.textContent = money(totalAll)
+      countTodayEl.textContent = `${countToday} transaksi`
+      countMonthEl.textContent = `${countMonth} transaksi`
+      countAllEl.textContent = `${loadTx().length} transaksi`
+    }
+
+    // events
+    dateInput.addEventListener('change',()=>{
+      updateDateParts(dateInput.value)
+      calcSummaries()
+    })
+
+    btnSave.addEventListener('click',()=>{
+      const menus = readStorage(LS_MENUS, [])
+      if(!menus.length){alert('Belum ada menu. Tambahkan menu terlebih dahulu.');return}
+      const idx = Number(selectMenu.value)
+      const m = menus[idx]
+      const qty = Number(qtyEl.value) || 1
+      const tanggalISO = dateInput.value
+      const d = new Date(tanggalISO)
+      const hari = d.toLocaleDateString('id-ID',{weekday:'long'})
+      const bulan = d.toLocaleDateString('id-ID',{month:'long'})
+      const tahun = d.getFullYear()
+      const total = m.price * qty
+      const tx = {menu:m.name,price:m.price,qty,tanggal:tanggalISO,hari,bulan,tahun,total}
+      saveTx(tx)
+      renderTxTable(); calcSummaries(); alert('Transaksi tersimpan')
+    })
+
+    // slide panel controls
+    btnTambahMenu.addEventListener('click',()=>{ slidePanel.classList.add('open'); slidePanel.setAttribute('aria-hidden','false') })
+    closePanel.addEventListener('click',()=>{ slidePanel.classList.remove('open'); slidePanel.setAttribute('aria-hidden','true') })
+    cancelMenu.addEventListener('click',()=>{ slidePanel.classList.remove('open') })
+
+    saveMenu.addEventListener('click',()=>{
+      const name = menuName.value.trim(); const price = Number(menuPrice.value)
+      if(!name){alert('Isi nama menu');return}
+      if(!price || price<0){alert('Isi harga yang valid');return}
+      const menus = readStorage(LS_MENUS, [])
+      menus.push({name,price})
+      // dedupe by name (case-insensitive) keep latest price
+      const map = new Map()
+      menus.forEach(m=>map.set(m.name.toLowerCase(), {name:m.name,price:m.price}))
+      const arr = Array.from(map.values())
+      arr.sort((a,b)=>a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+      writeStorage(LS_MENUS, arr)
+      menuName.value='';menuPrice.value=''
+      renderMenuOptions()
+      slidePanel.classList.remove('open')
+    })
+
+    // clear all data (but keep menus)
+    btnClearAll.addEventListener('click',()=>{
+      if(!confirm('Hapus semua transaksi dan menus? (menu default akan kembali)')) return
+      localStorage.removeItem(LS_TX)
+      localStorage.removeItem(LS_MENUS)
+      renderMenuOptions(); renderTxTable(); calcSummaries()
+    })
+
+    // initial render
+    (function init(){
+      renderMenuOptions()
+      updateDateParts(dateInput.value)
+      renderTxTable()
+      calcSummaries()
+    })()
+  </script>
+</body>
+</html>
